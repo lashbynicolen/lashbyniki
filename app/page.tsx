@@ -14,7 +14,7 @@ export default function HomePage() {
           <p className="font-script text-xl text-primary/70">Lash &amp; Beauty</p>
           <p className="mt-3 text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Nicole Bosiacka. Wszelkie prawa
-            zastrzeżone.
+            zastrzeżone. pvpwsad
           </p>
         </div>
       </footer>
