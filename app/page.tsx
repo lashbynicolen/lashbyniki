@@ -17,7 +17,7 @@ export default function HomePage() {
           <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0 text-primary/70" />
             <address className="not-italic">
-              Plac J. Weyssenhoffa 9/1A, Dzielnica Muzyczna Centrum Miasta, Bydgoszcz, Poland
+              Plac J. Weyssenhoffa 9/1A, Dzielnica Muzyczna Centrum Miasta Bydgoszcz, Poland
             </address>
           </div>
 
