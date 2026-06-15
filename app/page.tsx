@@ -1,5 +1,6 @@
 import { Hero } from "@/components/hero"
 import { BookingForm } from "@/components/booking-form"
+import { MapPin } from "lucide-react"
 
 export default function HomePage() {
   return (
@@ -12,9 +13,17 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl px-6 text-center">
           <p className="font-serif text-lg text-foreground">Nicole Bosiacka</p>
           <p className="font-script text-xl text-primary/70">Lash &amp; Beauty</p>
-          <p className="mt-3 text-xs text-muted-foreground">
+
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="h-4 w-4 shrink-0 text-primary/70" />
+            <address className="not-italic">
+              ul. Przykładowa 1, 00-000 Warszawa
+            </address>
+          </div>
+
+          <p className="mt-4 text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Nicole Bosiacka. Wszelkie prawa
-            zastrzeżone. pvpwsad
+            zastrzeżone.
           </p>
         </div>
       </footer>
