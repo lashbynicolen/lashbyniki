@@ -12,10 +12,15 @@ const navLinks = [
   { href: "/opinie", label: "Opinie" },
 ]
 
+/** Routes where the public navbar should be hidden (admin section). */
+const HIDDEN_PREFIXES = ["/klienci"]
+
 export function Navbar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+
+  const hidden = HIDDEN_PREFIXES.some((p) => pathname.startsWith(p))
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -23,10 +28,11 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  // Close mobile menu on route change
   useEffect(() => {
     setOpen(false)
   }, [pathname])
+
+  if (hidden) return null
 
   return (
     <nav

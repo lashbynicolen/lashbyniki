@@ -24,12 +24,24 @@ export function ScrollReveal({
     const el = ref.current
     if (!el) return
 
+    const reveal = () => {
+      const t = setTimeout(() => {
+        el.classList.add("sr-visible")
+      }, delay)
+      return t
+    }
+
+    // If the element is already in the viewport on mount, reveal immediately.
+    const rect = el.getBoundingClientRect()
+    if (rect.top < window.innerHeight) {
+      const t = reveal()
+      return () => clearTimeout(t)
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          const t = setTimeout(() => {
-            el.classList.add("sr-visible")
-          }, delay)
+          const t = reveal()
           observer.unobserve(el)
           return () => clearTimeout(t)
         }

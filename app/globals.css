@@ -134,3 +134,36 @@
 .font-script {
   font-family: var(--font-script);
 }
+
+/* ── Scroll-reveal animations ─────────────────────────────────── */
+.sr-hidden {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.sr-hidden.sr-from-left  { transform: translateX(-24px); }
+.sr-hidden.sr-from-right { transform: translateX(24px); }
+.sr-hidden.sr-from-none  { transform: none; }
+.sr-hidden.sr-visible {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* ── Hero entry animations ────────────────────────────────────── */
+@keyframes hero-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-script {
+  animation: hero-fade-up 0.7s ease both;
+  animation-delay: 0.1s;
+}
+.hero-title {
+  animation: hero-fade-up 0.7s ease both;
+  animation-delay: 0.22s;
+}
+.hero-sub {
+  animation: hero-fade-up 0.7s ease both;
+  animation-delay: 0.36s;
+}
+
