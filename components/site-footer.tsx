@@ -58,17 +58,17 @@ function TikTokIcon() {
 
 const socialLinks = [
   {
-    href: "https://instagram.com",
+    href: "https://www.instagram.com/nicole_bosiacka/",
     label: "Instagram",
     Icon: InstagramIcon,
   },
   {
-    href: "https://facebook.com",
+    href: "https://facebook.com/nicole.bosiacka.1/",
     label: "Facebook",
     Icon: FacebookIcon,
   },
   {
-    href: "https://tiktok.com",
+    href: "https://www.tiktok.com/@lomisa_studio/",
     label: "TikTok",
     Icon: TikTokIcon,
   },
