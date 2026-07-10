@@ -14,13 +14,15 @@ export interface PriceOverrideRow {
 
 // ─── Table bootstrap ──────────────────────────────────────────────────────────
 
+// variant_key is stored as '' (empty string) for services without variants,
+// so we can use a simple two-column PRIMARY KEY without COALESCE expressions.
 async function ensureTable() {
   await prisma.$executeRaw`
     CREATE TABLE IF NOT EXISTS services_overrides (
       service_key  TEXT    NOT NULL,
-      variant_key  TEXT,
+      variant_key  TEXT    NOT NULL DEFAULT '',
       price        INTEGER NOT NULL,
-      PRIMARY KEY  (service_key, COALESCE(variant_key, ''))
+      PRIMARY KEY  (service_key, variant_key)
     )
   `
 }
@@ -64,21 +66,13 @@ export async function upsertPriceOverride(
   await requireAuth()
   await ensureTable()
 
-  if (variantKey) {
-    await prisma.$executeRaw`
-      INSERT INTO services_overrides (service_key, variant_key, price)
-      VALUES (${serviceKey}, ${variantKey}, ${price})
-      ON CONFLICT (service_key, COALESCE(variant_key, ''))
-      DO UPDATE SET price = EXCLUDED.price
-    `
-  } else {
-    await prisma.$executeRaw`
-      INSERT INTO services_overrides (service_key, variant_key, price)
-      VALUES (${serviceKey}, NULL, ${price})
-      ON CONFLICT (service_key, COALESCE(variant_key, ''))
-      DO UPDATE SET price = EXCLUDED.price
-    `
-  }
+  const vk = variantKey ?? ""
+  await prisma.$executeRaw`
+    INSERT INTO services_overrides (service_key, variant_key, price)
+    VALUES (${serviceKey}, ${vk}, ${price})
+    ON CONFLICT (service_key, variant_key)
+    DO UPDATE SET price = EXCLUDED.price
+  `
 
   revalidatePath("/")
   revalidatePath("/klienci/zarzadzanie")
@@ -92,17 +86,11 @@ export async function deletePriceOverride(
   await requireAuth()
   await ensureTable()
 
-  if (variantKey) {
-    await prisma.$executeRaw`
-      DELETE FROM services_overrides
-      WHERE service_key = ${serviceKey} AND variant_key = ${variantKey}
-    `
-  } else {
-    await prisma.$executeRaw`
-      DELETE FROM services_overrides
-      WHERE service_key = ${serviceKey} AND variant_key IS NULL
-    `
-  }
+  const vk = variantKey ?? ""
+  await prisma.$executeRaw`
+    DELETE FROM services_overrides
+    WHERE service_key = ${serviceKey} AND variant_key = ${vk}
+  `
 
   revalidatePath("/")
   revalidatePath("/klienci/zarzadzanie")
