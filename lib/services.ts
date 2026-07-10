@@ -1,8 +1,9 @@
 /**
  * Konfiguracja usług i cen.
  *
- * Wszystkie ceny są w ZŁOTÓWKACH (zł) i można je tutaj edytować.
- * Domyślnie ustawione na 0 zł — zmień wartości poniżej, aby zaktualizować cennik.
+ * Ceny bazowe są zdefiniowane tutaj. Administratorzy mogą nadpisywać je
+ * przez dashboard — nadpisania trafiają do tabeli `services_overrides` w DB.
+ * Funkcja `getServiceCategoriesWithPrices()` scala bazowe ceny z nadpisaniami.
  */
 
 export type ServiceVariantKey = "nowe" | "uzupelnienie"
@@ -144,4 +145,50 @@ export function getServiceLabel(
     return `${service.label}${variant ? ` – ${variant.label}` : ""}`
   }
   return service.label
+}
+
+/**
+ * Returns a deep clone of serviceCategories with prices merged from
+ * the DB overrides table. Use this in server components / server actions
+ * so the displayed and booked prices always reflect admin edits.
+ */
+export async function getServiceCategoriesWithPrices(): Promise<ServiceCategory[]> {
+  // Lazy import to avoid pulling prisma into client bundles
+  const { getPriceOverrides } = await import("@/app/actions/services")
+  const overrides = await getPriceOverrides()
+
+  return serviceCategories.map((cat) => ({
+    ...cat,
+    services: cat.services.map((svc) => {
+      if (svc.variants) {
+        return {
+          ...svc,
+          variants: svc.variants.map((v) => {
+            const mapKey = `${svc.key}__${v.key}`
+            return mapKey in overrides
+              ? { ...v, price: overrides[mapKey] }
+              : { ...v }
+          }),
+        }
+      }
+      return svc.key in overrides
+        ? { ...svc, price: overrides[svc.key] }
+        : { ...svc }
+    }),
+  }))
+}
+
+/**
+ * DB-aware price lookup for use in server actions (e.g. booking).
+ * Falls back to static price when no override is stored.
+ */
+export async function getServicePriceFromDB(
+  serviceKey: string,
+  variantKey?: string | null,
+): Promise<number> {
+  const { getPriceOverrides } = await import("@/app/actions/services")
+  const overrides = await getPriceOverrides()
+  const mapKey = variantKey ? `${serviceKey}__${variantKey}` : serviceKey
+  if (mapKey in overrides) return overrides[mapKey]
+  return getServicePrice(serviceKey, variantKey)
 }

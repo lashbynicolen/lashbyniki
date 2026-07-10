@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BookingCalendar } from "@/components/booking-calendar"
 import {
-  serviceCategories,
   addonCategoryKey,
   makeupInfoMessage,
   formatPrice,
   getServicePrice,
   getServiceLabel,
   type ServiceVariantKey,
+  type ServiceCategory,
 } from "@/lib/services"
 import { createBooking } from "@/app/actions/booking"
 
@@ -27,6 +27,10 @@ interface Selection {
   serviceKey: string | null
   variant: ServiceVariantKey | null
   addons: string[]
+}
+
+interface BookingFormProps {
+  serviceCategories: ServiceCategory[]
 }
 
 const MONTHS_LONG = [
@@ -49,7 +53,7 @@ function formatDatePretty(key: string): string {
   return `${d} ${MONTHS_LONG[m - 1]} ${y}`
 }
 
-export function BookingForm() {
+export function BookingForm({ serviceCategories }: BookingFormProps) {
   const [step, setStep] = useState<Step>(0)
   const [selection, setSelection] = useState<Selection>({
     serviceKey: null,
@@ -104,6 +108,21 @@ export function BookingForm() {
       .finally(() => setLoadingSlots(false))
   }, [date])
 
+  /** Look up a price from the live serviceCategories prop */
+  const getPriceFromProp = useMemo(() => {
+    return (serviceKey: string, variantKey?: string | null): number => {
+      for (const cat of serviceCategories) {
+        const svc = cat.services.find((s) => s.key === serviceKey)
+        if (!svc) continue
+        if (svc.variants && variantKey) {
+          return svc.variants.find((v) => v.key === variantKey)?.price ?? 0
+        }
+        return svc.price ?? 0
+      }
+      return getServicePrice(serviceKey, variantKey)
+    }
+  }, [serviceCategories])
+
   const selectedServiceLabel = useMemo(() => {
     if (!selection.serviceKey) return null
     return getServiceLabel(selection.serviceKey, selection.variant)
@@ -112,10 +131,10 @@ export function BookingForm() {
   const totalPrice = useMemo(() => {
     let total = 0
     if (selection.serviceKey)
-      total += getServicePrice(selection.serviceKey, selection.variant)
-    for (const addon of selection.addons) total += getServicePrice(addon)
+      total += getPriceFromProp(selection.serviceKey, selection.variant)
+    for (const addon of selection.addons) total += getPriceFromProp(addon)
     return total
-  }, [selection])
+  }, [selection, getPriceFromProp])
 
   const isMakeup = useMemo(() => {
     if (!selection.serviceKey) return false
@@ -123,7 +142,7 @@ export function BookingForm() {
       c.services.some((s) => s.key === selection.serviceKey),
     )
     return cat?.key === "makijaz"
-  }, [selection.serviceKey])
+  }, [selection.serviceKey, serviceCategories])
 
   function selectService(serviceKey: string, hasVariants: boolean) {
     setSelection((prev) => ({
@@ -222,6 +241,7 @@ export function BookingForm() {
         {step === 0 && (
           <ServiceStep
             selection={selection}
+            serviceCategories={serviceCategories}
             onSelectService={selectService}
             onSelectVariant={(v) =>
               setSelection((prev) => ({ ...prev, variant: v }))
@@ -390,11 +410,13 @@ function ServiceStep({
   onSelectService,
   onSelectVariant,
   onToggleAddon,
+  serviceCategories,
 }: {
   selection: Selection
   onSelectService: (key: string, hasVariants: boolean) => void
   onSelectVariant: (v: ServiceVariantKey) => void
   onToggleAddon: (key: string) => void
+  serviceCategories: ServiceCategory[]
 }) {
   return (
     <div className="space-y-8">
