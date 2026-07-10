@@ -3,6 +3,7 @@ import Image from "next/image"
 import { SiteFooter } from "@/components/site-footer"
 import { ScrollReveal } from "@/components/scroll-reveal"
 import { PortfolioGallery } from "@/components/portfolio-gallery"
+import { getPortfolioImages } from "@/app/portfolio/actions"
 
 export const metadata: Metadata = {
   title: "Portfolio",
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
     "Portfolio Nicole Bosiacka – stylizacja rzęs, przedłużanie i makijaż. Galeria efektów pracy.",
 }
 
-export default function PortfolioPage() {
+export const dynamic = "force-dynamic"
+
+export default async function PortfolioPage() {
+  const images = await getPortfolioImages()
   return (
     <main className="min-h-screen bg-background">
       {/* Page header */}
@@ -32,7 +36,7 @@ export default function PortfolioPage() {
 
       {/* Gallery */}
       <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <PortfolioGallery />
+        <PortfolioGallery images={images} />
       </section>
 
       <SiteFooter />

@@ -4,178 +4,9 @@ import { useState } from "react"
 import Image from "next/image"
 import { X, ZoomIn } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { PortfolioImageRow } from "@/app/portfolio/actions"
 
 type Category = "wszystkie" | "rzesy" | "makijaz"
-
-interface GalleryImage {
-  src: string
-  alt: string
-  category: Exclude<Category, "wszystkie">
-  wide?: boolean
-  tall?: boolean
-}
-
-/**
- * To add real images:
- * 1. Place your photos in /public/portfolio/
- * 2. Replace the placeholder URLs below with e.g. "/portfolio/rzesy-01.jpg"
- * 3. Update the alt text and category for each image
- */
-const images: GalleryImage[] = [
-  {
-    src: "/portfolio/rzesy-wet-look-01.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/makijaz-slubny-01.jpg?height=700&width=900",
-    alt: "Makijaż ślubny",
-    category: "makijaz",
-    wide: true,
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-02.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/makijaz-okolicznosciowy-01.jpg?height=700&width=700",
-    alt: "Makijaż okolicznościowy",
-    category: "makijaz",
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-03.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/makijaz-slubny-02.jpg?height=700&width=700",
-    alt: "Makijaż ślubny",
-    category: "makijaz",
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-04.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/makijaz-okolicznosciowy-02.jpg?height=700&width=900",
-    alt: "Makijaż okolicznościowy",
-    category: "makijaz",
-    wide: true,
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-05.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-06.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/makijaz-okolicznosciowy-03.jpg?height=700&width=700",
-    alt: "Makijaż okolicznościowy",
-    category: "makijaz",
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-07.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/makijaz-okolicznosciowy-04.jpg?height=700&width=900",
-    alt: "Makijaż okolicznościowy",
-    category: "makijaz",
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-08.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-09.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-10.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-11.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/rzesy-wet-look-12.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/rzesy-wispy-set-01.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: Wispy Set",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/rzesy-wispy-set-02.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wispy Set",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/rzesy-brazowe-01.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: Brązowe",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/rzesy-wet-dodatek-kolor-01.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: Wet Look z kolorem jako dodatek",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/rzesy-wet-dodatek-kolor-02.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look z kolorem jako dodatek",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/rzesy-wet-dodatek-kolor-03.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: Wet Look z kolorem jako dodatek",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/rzesy-5d-01.jpg?height=700&width=700",
-    alt: "Stylizacja rzęs: 5D (skręt D)",
-    category: "rzesy",
-  },
-  {
-    src: "/portfolio/rzesy-5d-02.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: 5D (skręt D)",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/rzesy23d-01.jpg?height=900&width=700",
-    alt: "Stylizacja rzęs: 2-3D",
-    category: "rzesy",
-    tall: true,
-  },
-  {
-    src: "/portfolio/rzesy-11-01.jpg?height=900&width=900",
-    alt: "Stylizacja rzęs: 1:1",
-    category: "rzesy",
-    tall: true,
-  },
-]
 
 const categoryLabels: Record<Category, string> = {
   wszystkie: "Wszystkie",
@@ -183,9 +14,13 @@ const categoryLabels: Record<Category, string> = {
   makijaz: "Makijaż",
 }
 
-export function PortfolioGallery() {
+interface Props {
+  images: PortfolioImageRow[]
+}
+
+export function PortfolioGallery({ images }: Props) {
   const [active, setActive] = useState<Category>("wszystkie")
-  const [lightbox, setLightbox] = useState<GalleryImage | null>(null)
+  const [lightbox, setLightbox] = useState<PortfolioImageRow | null>(null)
 
   const filtered =
     active === "wszystkie"
@@ -219,7 +54,7 @@ export function PortfolioGallery() {
       >
         {filtered.map((img, i) => (
           <div
-            key={img.src + i}
+            key={img.id}
             className="group relative mb-3 break-inside-avoid cursor-pointer overflow-hidden rounded-xl border border-border bg-muted shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
             style={{
               animationDelay: `${(i % 8) * 60}ms`,
