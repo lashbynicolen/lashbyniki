@@ -11,7 +11,7 @@ import {
 import {
   findService,
   getServiceLabel,
-  getServicePrice,
+  getServicePriceFromDB,
 } from "@/lib/services"
 import { sendBookingEmails } from "@/lib/email"
 
@@ -100,12 +100,11 @@ export async function createBooking(
   }
 
   const serviceLabel = getServiceLabel(payload.serviceKey, payload.variant)
-  const servicePrice = getServicePrice(payload.serviceKey, payload.variant)
+  const servicePrice = await getServicePriceFromDB(payload.serviceKey, payload.variant)
   const addonLabels = payload.addons.map((key) => getServiceLabel(key))
-  const addonsPrice = payload.addons.reduce(
-    (sum, key) => sum + getServicePrice(key),
-    0,
-  )
+  const addonsPrice = (
+    await Promise.all(payload.addons.map((key) => getServicePriceFromDB(key)))
+  ).reduce((sum, p) => sum + p, 0)
   const totalPrice = servicePrice + addonsPrice
 
   try {

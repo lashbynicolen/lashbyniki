@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -47,8 +48,13 @@ import {
   addPortfolioImage,
 } from "@/app/portfolio/actions"
 
-// Real service categories from lib/services.ts
+// Real service categories and DB price actions
 import type { ServiceCategory } from "@/lib/services"
+import {
+  getPriceOverrides,
+  upsertPriceOverride,
+  deletePriceOverride,
+} from "@/app/actions/services"
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -217,17 +223,67 @@ function OverviewTab({
 }
 
 // ─── Cennik Tab ───────────────────────────────────────────────────────────────
-// Services are stored in lib/services.ts (static TypeScript file).
-// In-session price edits mutate the imported object in memory; to persist them
-// permanently the user must edit lib/services.ts in their repo.
+// Prices are stored in the `services_overrides` PostgreSQL table.
+// Static lib/services.ts defines structure/labels/defaults; DB overrides win.
 
 function CennikTab({
   serviceCategories,
 }: {
   serviceCategories: ServiceCategory[]
 }) {
+  const router = useRouter()
+  // Flat map of overrides fetched from DB: "serviceKey" or "serviceKey__variantKey" → price
+  const [overrides, setOverrides] = useState<Record<string, number>>({})
+  const [loadingOverrides, setLoadingOverrides] = useState(true)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
+  const [savingKey, setSavingKey] = useState<string | null>(null)
+
+  // Load live overrides from DB on mount
+  useEffect(() => {
+    getPriceOverrides()
+      .then(setOverrides)
+      .finally(() => setLoadingOverrides(false))
+  }, [])
+
+  /** Returns the live effective price: DB override if set, otherwise static default */
+  function effectivePrice(serviceKey: string, variantKey?: string | null): number {
+    const mapKey = variantKey ? `${serviceKey}__${variantKey}` : serviceKey
+    if (mapKey in overrides) return overrides[mapKey]
+    for (const cat of serviceCategories) {
+      const svc = cat.services.find((s) => s.key === serviceKey)
+      if (!svc) continue
+      if (svc.variants && variantKey) {
+        return svc.variants.find((v) => v.key === variantKey)?.price ?? 0
+      }
+      return svc.price ?? 0
+    }
+    return 0
+  }
+
+  async function handleSave(serviceKey: string, variantKey: string | null, mapKey: string) {
+    const newPrice = Number(editValue)
+    if (isNaN(newPrice) || newPrice < 0) { setEditingKey(null); return }
+    setSavingKey(mapKey)
+    setEditingKey(null)
+    // Optimistic update
+    setOverrides((prev) => ({ ...prev, [mapKey]: newPrice }))
+    await upsertPriceOverride(serviceKey, variantKey, newPrice)
+    setSavingKey(null)
+    router.refresh()
+  }
+
+  async function handleRevert(serviceKey: string, variantKey: string | null, mapKey: string) {
+    setSavingKey(mapKey)
+    setOverrides((prev) => {
+      const next = { ...prev }
+      delete next[mapKey]
+      return next
+    })
+    await deletePriceOverride(serviceKey, variantKey)
+    setSavingKey(null)
+    router.refresh()
+  }
 
   return (
     <div className="space-y-8">
@@ -236,12 +292,11 @@ function CennikTab({
           Cennik i Usługi
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Dane z{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-xs">
-            lib/services.ts
-          </code>
-          . Kliknij cenę, aby ją edytować w bieżącej sesji. Aby zapisać zmiany
-          trwale, zaktualizuj plik w repozytorium.
+          Kliknij cenę, aby ją edytować. Zmiany są zapisywane natychmiast do
+          bazy danych i widoczne na żywo na stronie.{" "}
+          {loadingOverrides && (
+            <span className="text-primary">Ładowanie nadpisań…</span>
+          )}
         </p>
       </div>
 
@@ -265,17 +320,21 @@ function CennikTab({
                   <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Cena
                   </th>
+                  <th className="w-10 px-3 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {category.services.map((service) =>
                   service.variants ? (
                     service.variants.map((variant) => {
-                      const cellKey = `${service.key}__${variant.key}`
-                      const isEditing = editingKey === cellKey
+                      const mapKey = `${service.key}__${variant.key}`
+                      const isEditing = editingKey === mapKey
+                      const isSaving = savingKey === mapKey
+                      const livePrice = effectivePrice(service.key, variant.key)
+                      const isOverridden = mapKey in overrides
                       return (
                         <tr
-                          key={cellKey}
+                          key={mapKey}
                           className="group transition-colors hover:bg-muted/20"
                         >
                           <td className="px-5 py-3 text-foreground">
@@ -294,27 +353,14 @@ function CennikTab({
                                   className="h-7 w-24 text-sm"
                                   autoFocus
                                   onKeyDown={(e) => {
-                                    if (
-                                      !e.nativeEvent.isComposing &&
-                                      e.key === "Enter"
-                                    ) {
-                                      variant.price =
-                                        Number(editValue) || variant.price
-                                      setEditingKey(null)
-                                    }
-                                    if (e.key === "Escape")
-                                      setEditingKey(null)
+                                    if (!e.nativeEvent.isComposing && e.key === "Enter")
+                                      handleSave(service.key, variant.key, mapKey)
+                                    if (e.key === "Escape") setEditingKey(null)
                                   }}
                                 />
-                                <span className="text-xs text-muted-foreground">
-                                  zł
-                                </span>
+                                <span className="text-xs text-muted-foreground">zł</span>
                                 <button
-                                  onClick={() => {
-                                    variant.price =
-                                      Number(editValue) || variant.price
-                                    setEditingKey(null)
-                                  }}
+                                  onClick={() => handleSave(service.key, variant.key, mapKey)}
                                   aria-label="Zapisz"
                                   className="text-primary hover:text-primary/70"
                                 >
@@ -330,20 +376,34 @@ function CennikTab({
                               </div>
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className="font-medium text-foreground">
-                                  {variant.price} zł
+                                <span className={cn("font-medium", isOverridden ? "text-primary" : "text-foreground")}>
+                                  {isSaving ? "…" : `${livePrice} zł`}
                                 </span>
+                                {isOverridden && !isSaving && (
+                                  <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                                    nadpisano
+                                  </span>
+                                )}
                                 <button
-                                  onClick={() => {
-                                    setEditingKey(cellKey)
-                                    setEditValue(String(variant.price))
-                                  }}
+                                  onClick={() => { setEditingKey(mapKey); setEditValue(String(livePrice)) }}
                                   aria-label="Edytuj cenę"
                                   className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-foreground"
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </button>
                               </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            {isOverridden && !isEditing && !isSaving && (
+                              <button
+                                onClick={() => handleRevert(service.key, variant.key, mapKey)}
+                                aria-label="Przywróć domyślną cenę"
+                                className="rounded p-1 text-muted-foreground/50 transition-colors hover:text-destructive opacity-0 group-hover:opacity-100"
+                                title="Przywróć domyślną cenę"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
                             )}
                           </td>
                         </tr>
@@ -367,26 +427,14 @@ function CennikTab({
                               className="h-7 w-24 text-sm"
                               autoFocus
                               onKeyDown={(e) => {
-                                if (
-                                  !e.nativeEvent.isComposing &&
-                                  e.key === "Enter"
-                                ) {
-                                  service.price =
-                                    Number(editValue) || service.price
-                                  setEditingKey(null)
-                                }
+                                if (!e.nativeEvent.isComposing && e.key === "Enter")
+                                  handleSave(service.key, null, service.key)
                                 if (e.key === "Escape") setEditingKey(null)
                               }}
                             />
-                            <span className="text-xs text-muted-foreground">
-                              zł
-                            </span>
+                            <span className="text-xs text-muted-foreground">zł</span>
                             <button
-                              onClick={() => {
-                                service.price =
-                                  Number(editValue) || service.price
-                                setEditingKey(null)
-                              }}
+                              onClick={() => handleSave(service.key, null, service.key)}
                               aria-label="Zapisz"
                               className="text-primary hover:text-primary/70"
                             >
@@ -402,20 +450,34 @@ function CennikTab({
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">
-                              {service.price} zł
+                            <span className={cn("font-medium", service.key in overrides ? "text-primary" : "text-foreground")}>
+                              {savingKey === service.key ? "…" : `${effectivePrice(service.key)} zł`}
                             </span>
+                            {service.key in overrides && savingKey !== service.key && (
+                              <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                                nadpisano
+                              </span>
+                            )}
                             <button
-                              onClick={() => {
-                                setEditingKey(service.key)
-                                setEditValue(String(service.price ?? 0))
-                              }}
+                              onClick={() => { setEditingKey(service.key); setEditValue(String(effectivePrice(service.key))) }}
                               aria-label="Edytuj cenę"
                               className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-foreground"
                             >
                               <Pencil className="h-3 w-3" />
                             </button>
                           </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        {service.key in overrides && editingKey !== service.key && savingKey !== service.key && (
+                          <button
+                            onClick={() => handleRevert(service.key, null, service.key)}
+                            aria-label="Przywróć domyślną cenę"
+                            className="rounded p-1 text-muted-foreground/50 transition-colors hover:text-destructive opacity-0 group-hover:opacity-100"
+                            title="Przywróć domyślną cenę"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -437,6 +499,7 @@ function PortfolioTab({
 }: {
   initialImages: PortfolioImageRow[]
 }) {
+  const router = useRouter()
   const [images, setImages] = useState(initialImages)
   const [isPending, startTransition] = useTransition()
   const [addOpen, setAddOpen] = useState(false)
@@ -453,6 +516,7 @@ function PortfolioTab({
     setImages((prev) => prev.filter((img) => img.id !== id))
     startTransition(async () => {
       await deletePortfolioImage(id)
+      router.refresh()
     })
   }
 
@@ -490,6 +554,7 @@ function PortfolioTab({
     setNewCategory("rzesy")
     setNewWide(false)
     setNewTall(false)
+    router.refresh()
   }
 
   return (
@@ -510,12 +575,7 @@ function PortfolioTab({
           </p>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="shrink-0 gap-2">
-              <Plus className="h-4 w-4" />
-              Dodaj zdjęcie
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger render={<Button size="sm" className="shrink-0 gap-2"><Plus className="h-4 w-4" />Dodaj zdjęcie</Button>} />
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="font-serif">
@@ -704,6 +764,7 @@ function OpinieTab({
 }: {
   initialReviews: AdminReviewRow[]
 }) {
+  const router = useRouter()
   const [reviews, setReviews] = useState(initialReviews)
   const [isPending, startTransition] = useTransition()
   const [addOpen, setAddOpen] = useState(false)
@@ -724,6 +785,7 @@ function OpinieTab({
     )
     startTransition(async () => {
       await toggleReviewApproval(id, !currentlyApproved)
+      router.refresh()
     })
   }
 
@@ -731,6 +793,7 @@ function OpinieTab({
     setReviews((prev) => prev.filter((r) => r.id !== id))
     startTransition(async () => {
       await deleteReview(id)
+      router.refresh()
     })
   }
 
@@ -760,6 +823,7 @@ function OpinieTab({
     setReviews((prev) => [optimistic, ...prev])
     setForm({ firstName: "", lastName: "", email: "", content: "", rating: 5 })
     setAddOpen(false)
+    router.refresh()
   }
 
   const approvedCount = reviews.filter((r) => r.approved).length
@@ -781,12 +845,7 @@ function OpinieTab({
           </p>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="shrink-0 gap-2">
-              <Plus className="h-4 w-4" />
-              Dodaj opinię
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger render={<Button size="sm" className="shrink-0 gap-2"><Plus className="h-4 w-4" />Dodaj opinię</Button>} />
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="font-serif">
