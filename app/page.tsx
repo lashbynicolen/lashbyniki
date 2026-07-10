@@ -1,5 +1,6 @@
 import { Hero } from "@/components/hero"
 import { BookingForm } from "@/components/booking-form"
+import { SiteFooter } from "@/components/site-footer"
 
 export default function HomePage() {
   return (
@@ -8,16 +9,7 @@ export default function HomePage() {
       <section className="mt-6">
         <BookingForm />
       </section>
-      <footer className="border-t border-border py-8">
-        <div className="mx-auto max-w-3xl px-6 text-center">
-          <p className="font-serif text-lg text-foreground">Nicole Bosiacka</p>
-          <p className="font-script text-xl text-primary/70">Lash &amp; Beauty</p>
-          <p className="mt-3 text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Nicole Bosiacka. Wszelkie prawa
-            zastrzeżone. pvpwsad
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

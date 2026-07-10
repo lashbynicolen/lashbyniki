@@ -142,13 +142,33 @@ export function BookingForm() {
     }))
   }
 
+  function validateDetails(): Record<string, string> {
+    const errs: Record<string, string> = {}
+    if (!form.firstName.trim()) errs.firstName = "Imię jest wymagane."
+    if (!form.lastName.trim()) errs.lastName = "Nazwisko jest wymagane."
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!form.email.trim()) {
+      errs.email = "Adres e-mail jest wymagany."
+    } else if (!emailRe.test(form.email.trim())) {
+      errs.email = "Podaj poprawny adres e-mail."
+    }
+    // Accepts Polish mobile/landline: optional +48 or 0, then 9 digits (with spaces/dashes)
+    const phoneRe = /^(\+48|0)?[\s-]?(\d[\s-]?){9}$/
+    if (!form.phone.trim()) {
+      errs.phone = "Numer telefonu jest wymagany."
+    } else if (!phoneRe.test(form.phone.replace(/\s/g, ""))) {
+      errs.phone = "Podaj poprawny numer telefonu (np. 600 123 456)."
+    }
+    return errs
+  }
+
   function canProceed(): boolean {
     if (step === 0) return Boolean(selection.serviceKey)
     if (step === 1) return Boolean(date && time)
-    if (step === 2)
-      return Boolean(
-        form.firstName && form.lastName && form.email && form.phone,
-      )
+    if (step === 2) {
+      const errs = validateDetails()
+      return Object.keys(errs).length === 0
+    }
     return true
   }
 
@@ -293,8 +313,18 @@ export function BookingForm() {
 
         {step < 3 ? (
           <Button
-            onClick={() => setStep((s) => (s + 1) as Step)}
-            disabled={!canProceed()}
+            onClick={() => {
+              if (step === 2) {
+                const errs = validateDetails()
+                if (Object.keys(errs).length > 0) {
+                  setErrors(errs)
+                  return
+                }
+                setErrors({})
+              }
+              setStep((s) => (s + 1) as Step)
+            }}
+            disabled={step !== 2 && !canProceed()}
           >
             Dalej
           </Button>
@@ -399,8 +429,20 @@ function ServiceStep({
                       <span className="font-medium text-foreground">
                         {service.label}
                       </span>
+                      <span className="ml-3 shrink-0 text-sm text-muted-foreground">
+                        {hasVariants && service.variants
+                          ? (() => {
+                              const prices = service.variants.map((v) => v.price)
+                              const min = Math.min(...prices)
+                              const max = Math.max(...prices)
+                              return min === max
+                                ? formatPrice(min)
+                                : `od ${formatPrice(min)}`
+                            })()
+                          : formatPrice(service.price ?? 0)}
+                      </span>
                       {selected && (
-                        <Check className="h-4 w-4 shrink-0 text-primary" />
+                        <Check className="ml-2 h-4 w-4 shrink-0 text-primary" />
                       )}
                     </button>
 
@@ -465,15 +507,20 @@ function ServiceStep({
                     )}
                   >
                     <span className="text-foreground">{service.label}</span>
-                    <span
-                      className={cn(
-                        "flex h-5 w-5 items-center justify-center rounded border",
-                        checked
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border",
-                      )}
-                    >
-                      {checked && <Check className="h-3.5 w-3.5" />}
+                    <span className="ml-3 flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {formatPrice(service.price ?? 0)}
+                      </span>
+                      <span
+                        className={cn(
+                          "flex h-5 w-5 items-center justify-center rounded border",
+                          checked
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border",
+                        )}
+                      >
+                        {checked && <Check className="h-3.5 w-3.5" />}
+                      </span>
                     </span>
                   </button>
                 )
@@ -618,7 +665,7 @@ function SummaryStep({
         <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
           <span className="font-serif text-lg text-foreground">Razem</span>
           <span className="font-serif text-lg font-medium text-foreground">
-            {totalPrice > 0 ? formatPrice(totalPrice) : "Do ustalenia"}
+            {formatPrice(totalPrice)}
           </span>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata } from 'next'
 import { Cormorant_Garamond, Jost, Dancing_Script, Geist_Mono } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
+import { Navbar } from '@/components/navbar'
 import './globals.css'
 
 const cormorant = Cormorant_Garamond({
@@ -65,6 +66,7 @@ export default function RootLayout({
       className={`${cormorant.variable} ${jost.variable} ${dancing.variable} ${geistMono.variable} bg-background`}
     >
       <body className="font-sans antialiased">
+        <Navbar />
         {children}
         <Toaster position="top-center" richColors />
         {process.env.NODE_ENV === 'production' && <Analytics />}
