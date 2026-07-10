@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 import {
   logoutAction,
   updateAppointmentStatus,
@@ -131,12 +132,19 @@ export function AdminDashboard({
             </h1>
             <p className="text-xs text-muted-foreground">Panel rezerwacji</p>
           </div>
-          <form action={logoutAction}>
-            <Button variant="ghost" size="sm" type="submit">
-              <LogOut className="mr-2 h-4 w-4" />
-              Wyloguj
-            </Button>
-          </form>
+          <div className="flex items-center gap-2">
+            <Link href="/klienci/zarzadzanie">
+              <Button variant="outline" size="sm">
+                Panel treści
+              </Button>
+            </Link>
+            <form action={logoutAction}>
+              <Button variant="ghost" size="sm" type="submit">
+                <LogOut className="mr-2 h-4 w-4" />
+                Wyloguj
+              </Button>
+            </form>
+          </div>
         </div>
       </header>
 

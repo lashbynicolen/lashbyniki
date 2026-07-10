@@ -82,9 +82,11 @@ function customerHtml(data: BookingEmailData): string {
         ${row("Data", data.date)}
         ${row("Godzina", data.time)}
         ${row("Cena", `${data.totalPrice} zł`)}
+        ${row("Mój numer telefonu", "574 323 772")}
+        ${row("Adres", "Plac J. Weyssenhoffa 9/1A, Dzielnica Muzyczna Centrum Miasta Bydgoszcz")}
       </table>
       <p style="color:#8a8f82; font-size:13px; margin-top:24px;">
-        To jest przykładowa treść wiadomości — możesz ją dowolnie edytować.
+        Lash by Niki
       </p>
       <p style="color:${brandColor}; font-size:18px; margin-top:24px; font-style:italic;">
         Nicole Bosiacka
