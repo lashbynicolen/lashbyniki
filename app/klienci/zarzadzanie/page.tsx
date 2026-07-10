@@ -2,6 +2,9 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { isAuthenticated } from "@/lib/auth"
 import { ContentDashboard } from "@/components/admin/content-dashboard"
+import { getAllReviews } from "@/app/opinie/actions"
+import { getPortfolioImages } from "@/app/portfolio/actions"
+import { serviceCategories } from "@/lib/services"
 
 export const metadata: Metadata = {
   title: "Panel zarządzania",
@@ -15,5 +18,16 @@ export default async function ZarzadzaniePage() {
     redirect("/klienci/logowanie")
   }
 
-  return <ContentDashboard />
+  const [reviews, portfolioImages] = await Promise.all([
+    getAllReviews(),
+    getPortfolioImages(),
+  ])
+
+  return (
+    <ContentDashboard
+      initialReviews={reviews}
+      initialPortfolioImages={portfolioImages}
+      initialServiceCategories={serviceCategories}
+    />
+  )
 }

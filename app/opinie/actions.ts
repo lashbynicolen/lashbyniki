@@ -1,6 +1,8 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
+import { isAuthenticated } from "@/lib/auth"
 
 // Ensures the reviews table exists before any query
 async function ensureTable() {
@@ -107,4 +109,89 @@ export async function submitReview(
   }
 
   return { ok: true, message: "Dziękujemy za opinię! Została opublikowana." }
+}
+
+// ─── Admin-only actions ───────────────────────────────────────────────────────
+
+async function requireAuth() {
+  if (!(await isAuthenticated())) throw new Error("Brak autoryzacji")
+}
+
+export interface AdminReviewRow {
+  id: number
+  first_name: string
+  last_name: string
+  email: string
+  content: string
+  rating: number
+  approved: boolean
+  created_at: Date
+}
+
+/** Returns ALL reviews (approved + hidden) for the admin dashboard. */
+export async function getAllReviews(): Promise<AdminReviewRow[]> {
+  await requireAuth()
+  await ensureTable()
+  return prisma.$queryRaw<AdminReviewRow[]>`
+    SELECT id, first_name, last_name, email, content, rating, approved, created_at
+    FROM   reviews
+    ORDER  BY created_at DESC
+  `
+}
+
+/** Permanently delete a review by id. */
+export async function deleteReview(id: number): Promise<void> {
+  await requireAuth()
+  await ensureTable()
+  await prisma.$executeRaw`DELETE FROM reviews WHERE id = ${id}`
+  revalidatePath("/opinie")
+  revalidatePath("/klienci/zarzadzanie")
+}
+
+/** Toggle the approved flag of a review. */
+export async function toggleReviewApproval(id: number, approved: boolean): Promise<void> {
+  await requireAuth()
+  await ensureTable()
+  await prisma.$executeRaw`UPDATE reviews SET approved = ${approved} WHERE id = ${id}`
+  revalidatePath("/opinie")
+  revalidatePath("/klienci/zarzadzanie")
+}
+
+/** Add a review manually (admin bypasses the DONE-appointment check). */
+export async function adminAddReview(
+  firstName: string,
+  lastName: string,
+  email: string,
+  content: string,
+  rating: number,
+): Promise<{ ok: boolean; message: string }> {
+  await requireAuth()
+  await ensureTable()
+
+  if (!firstName || !lastName || !email || !content) {
+    return { ok: false, message: "Uzupełnij wszystkie pola." }
+  }
+  if (content.length < 5) {
+    return { ok: false, message: "Treść jest za krótka." }
+  }
+
+  const dupRows = await prisma.$queryRaw<Array<{ cnt: number }>>`
+    SELECT COUNT(*)::integer AS cnt FROM reviews WHERE email = ${email}
+  `
+  if ((dupRows[0]?.cnt ?? 0) > 0) {
+    return { ok: false, message: "Opinia dla tego e-mail już istnieje." }
+  }
+
+  try {
+    await prisma.$executeRaw`
+      INSERT INTO reviews (first_name, last_name, email, content, rating)
+      VALUES (${firstName}, ${lastName}, ${email}, ${content}, ${rating})
+    `
+  } catch {
+    return { ok: false, message: "Błąd zapisu. Spróbuj ponownie." }
+  }
+
+  revalidatePath("/opinie")
+  revalidatePath("/klienci/zarzadzanie")
+  return { ok: true, message: "Opinia została dodana." }
 }
